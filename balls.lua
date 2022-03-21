@@ -11,8 +11,14 @@ WAVE_LIST = {}
 WAVE_SPEED = 40
 WAVE_SPREAD = 150
 COLOR_INTENSITY = 0.7
-SIZE_INTENSITY = .9
+SIZE_INTENSITY = 1.8
 WAVE_RAMP = 91
+
+WAVE_SPEED2 = 40
+WAVE_SPREAD2 = 150
+COLOR_INTENSITY2 = 0.7
+SIZE_INTENSITY2 = 1.8
+WAVE_RAMP2 = 91
 
 function distance ( x1, y1, x2, y2 )
   local dx = x1 - x2
@@ -75,13 +81,40 @@ function newBall (x, y)
 
 		return m
 	end
+	b.calcDistance2 = function ()
+		local allWaveDists = {}
+		for i =	1, table.getn(WAVE_LIST) do
+			local d = (-1 *distance( b.x, b.y, WAVE_LIST[i][1], WAVE_LIST[i][2] ) + WAVE_RAMP2)*(1/WAVE_SPREAD2 )
+			d = d - WAVE_LIST[i][3]
+			local sigmoid = 1/(1+ math.exp(d))
+			table.insert (allWaveDists, 1-sigmoid)
+		end
+		local m = allWaveDists[1]
+		for i =	2, table.getn(allWaveDists) do
+			if m < allWaveDists[i] then 
+				m = allWaveDists[i]
+			end
+		end
+
+
+		return m
+	end
 	b.update = function ()
 		local addToSize = b.calcDistance()
 		b.color = {math.max(0, 0.2 + addToSize*COLOR_INTENSITY), math.max(0, 0.2 + addToSize*COLOR_INTENSITY), 1}
 		-- if addToSize >= 0.45 then
 		-- 	b.color = {1, 0, 0}
 		-- end
-		b.size = math.max(2,  BALL_RADIUS + addToSize*SIZE_INTENSITY*BALL_RADIUS )
+		b.size = 1 + addToSize*SIZE_INTENSITY*BALL_RADIUS 
+	end
+
+	b.update2 = function ()
+		local addToSize = b.calcDistance2()
+		b.color = {math.max(0, 0.2 + addToSize*COLOR_INTENSITY2), math.max(0, 0.2 + addToSize*COLOR_INTENSITY2), 1}
+		-- if addToSize >= 0.45 then
+		-- 	b.color = {1, 0, 0}
+		-- end
+		b.size = 1 + addToSize*SIZE_INTENSITY2*BALL_RADIUS 
 	end
 	return b
 end
@@ -118,6 +151,31 @@ balls.update = function (dt)
 	end
 end
 
+balls.update2 = function (dt)
+	for i = 1, table.getn(WAVE_LIST) do
+		
+		if WAVE_LIST[i][3] <=  0 then
+			WAVE_LIST[i][4] = -WAVE_LIST[i][4]
+			WAVE_LIST[i][3] = 0
+		elseif WAVE_LIST[i][3] <= 10 then
+			WAVE_LIST[i][4] = -WAVE_LIST[i][4]
+			WAVE_LIST[i][3] = 10
+		end
+
+		WAVE_LIST[i][3] = WAVE_LIST[i][3] + WAVE_LIST[i][4]*dt
+
+		-- a = a%love.graphics.getWidth()
+		-- local b = WAVE_LIST[i][2] - dt*WAVE_SPEED
+		-- b = b%love.graphics.getHeight()
+		-- WAVE_LIST[i]=  {a, b}
+	end
+	
+	-- WAVE_LOCATION = {a, b}
+	for i = 1, table.getn(balls.lst) do
+		balls.lst[i].update2()
+	end
+end
+
 balls.draw = function ()
 	for i = 1, table.getn(balls.lst) do
 			balls.lst[i].draw()
@@ -141,6 +199,20 @@ balls.start = function ()
 	love.draw = balls.draw
 	love.update = function (dt)
 		balls.update(dt)
+	end
+end
+
+balls.start2 = function ()
+	createBalls()
+	-- WAVE_SEGMENTS = {}
+	WAVE_LIST = {{0, love.graphics.getHeight(), 5, WAVE_SPEED2},
+				 {0, 0, 5, WAVE_SPEED2},
+				 {love.graphics.getWidth(), 0, 5, WAVE_SPEED2},
+				 {love.graphics.getWidth(), love.graphics.getHeight(), 5, WAVE_SPEED2}} 
+	
+	love.draw = balls.draw
+	love.update = function (dt)
+		balls.update2(dt)
 	end
 end
 
